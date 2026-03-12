@@ -1,13 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/transfans/payment/internal/config"
+	"github.com/transfans/payment/internal/db"
 )
 
 func main() {
@@ -18,6 +21,19 @@ func main() {
 		logger.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+
+	conn, err := sql.Open("pgx", cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("failed to open database", "error", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	if err := db.Migrate(conn); err != nil {
+		logger.Error("migration failed", "error", err)
+		os.Exit(1)
+	}
+	logger.Info("migrations applied")
 
 	r := chi.NewRouter()
 
