@@ -11,6 +11,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/transfans/payment/internal/config"
 	"github.com/transfans/payment/internal/db"
+	"github.com/transfans/payment/internal/middleware"
 )
 
 func main() {
@@ -36,13 +37,23 @@ func main() {
 	logger.Info("migrations applied")
 
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
 
-	r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {})
-	r.Get("/transactions", func(w http.ResponseWriter, r *http.Request) {})
-	r.Get("/balance", func(w http.ResponseWriter, r *http.Request) {})
-	r.Post("/payouts", func(w http.ResponseWriter, r *http.Request) {})
-	r.Get("/payouts", func(w http.ResponseWriter, r *http.Request) {})
-	r.Get("/revenue", func(w http.ResponseWriter, r *http.Request) {})
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(cfg.SharedJWTSecret))
+
+		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {})
+		r.Get("/transactions", func(w http.ResponseWriter, r *http.Request) {})
+
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.CreatorOnly)
+
+			r.Get("/balance", func(w http.ResponseWriter, r *http.Request) {})
+			r.Post("/payouts", func(w http.ResponseWriter, r *http.Request) {})
+			r.Get("/payouts", func(w http.ResponseWriter, r *http.Request) {})
+			r.Get("/revenue", func(w http.ResponseWriter, r *http.Request) {})
+		})
+	})
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
