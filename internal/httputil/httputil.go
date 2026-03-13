@@ -1,4 +1,4 @@
-package handlers
+package httputil
 
 import (
 	"encoding/json"
@@ -6,23 +6,24 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 )
 
 const maxBodyBytes = 1024 * 1024
 
-type ApiError struct {
+type apiError struct {
 	Code      int    `json:"code"`
 	Message   string `json:"message"`
-	RequestId string `json:"request_id,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
-type ErrorResponse struct {
-	Error ApiError `json:"error"`
+type errorResponse struct {
+	Error apiError `json:"error"`
 }
 
-func readJSON(w http.ResponseWriter, r *http.Request, data any) error {
+func ReadJSON(w http.ResponseWriter, r *http.Request, data any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	defer r.Body.Close()
 
@@ -56,12 +57,23 @@ func WriteJSON(w http.ResponseWriter, status int, data any) {
 }
 
 func WriteError(w http.ResponseWriter, status int, msg string) {
-	response := ErrorResponse{
-		Error: ApiError{
+	WriteJSON(w, status, errorResponse{
+		Error: apiError{
 			Code:      status,
 			Message:   msg,
-			RequestId: uuid.New().String(),
+			RequestID: uuid.New().String(),
 		},
+	})
+}
+
+func ParsePage(r *http.Request, defaultLimit int) (limit, offset int32) {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	lim, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if page < 1 {
+		page = 1
 	}
-	WriteJSON(w, status, response)
+	if lim < 1 {
+		lim = defaultLimit
+	}
+	return int32(lim), int32((page - 1) * lim)
 }

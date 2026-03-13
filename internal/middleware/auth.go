@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/transfans/payment/internal/handlers"
+	"github.com/transfans/payment/internal/httputil"
 )
 
 type Claims struct {
@@ -21,7 +21,7 @@ func Auth(secret string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
 			if !strings.HasPrefix(header, "Bearer ") {
-				handlers.WriteError(w, http.StatusUnauthorized, "missing or invalid authorization header")
+				httputil.WriteError(w, http.StatusUnauthorized, "missing or invalid authorization header")
 				return
 			}
 
@@ -34,18 +34,19 @@ func Auth(secret string) func(http.Handler) http.Handler {
 				return []byte(secret), nil
 			})
 			if err != nil || !token.Valid {
-				handlers.WriteError(w, http.StatusUnauthorized, "invalid or expired token")
+				httputil.WriteError(w, http.StatusUnauthorized, "invalid or expired token")
 				return
 			}
 
 			mapClaims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
-				handlers.WriteError(w, http.StatusUnauthorized, "invalid token claims")
+				httputil.WriteError(w, http.StatusUnauthorized, "invalid token claims")
 				return
 			}
 
+			sub, _ := mapClaims["sub"].(string)
 			claims := Claims{
-				UserID:    mapClaims["sub"].(string),
+				UserID:    sub,
 				IsCreator: mapClaims["is_creator"] == true,
 			}
 

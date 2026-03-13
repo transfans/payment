@@ -1,16 +1,20 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	_ "embed"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/transfans/payment/internal/config"
 	"github.com/transfans/payment/internal/db"
+	"github.com/transfans/payment/internal/handlers"
 	"github.com/transfans/payment/internal/middleware"
 )
 
@@ -23,18 +27,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	conn, err := sql.Open("pgx", cfg.DatabaseURL)
+	sqlDB, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
 		logger.Error("failed to open database", "error", err)
 		os.Exit(1)
 	}
-	defer conn.Close()
-
-	if err := db.Migrate(conn); err != nil {
+	if err := db.Migrate(sqlDB); err != nil {
 		logger.Error("migration failed", "error", err)
 		os.Exit(1)
 	}
+	sqlDB.Close()
 	logger.Info("migrations applied")
+
+	pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	app := &handlers.App{
+		Queries: db.New(pool),
+		Logger:  logger,
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -43,15 +58,15 @@ func main() {
 		r.Use(middleware.Auth(cfg.SharedJWTSecret))
 
 		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {})
-		r.Get("/transactions", func(w http.ResponseWriter, r *http.Request) {})
+		r.Get("/transactions", app.ListTransactions)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.CreatorOnly)
 
-			r.Get("/balance", func(w http.ResponseWriter, r *http.Request) {})
-			r.Post("/payouts", func(w http.ResponseWriter, r *http.Request) {})
-			r.Get("/payouts", func(w http.ResponseWriter, r *http.Request) {})
-			r.Get("/revenue", func(w http.ResponseWriter, r *http.Request) {})
+			r.Get("/balance", app.GetBalance)
+			r.Post("/payouts", app.CreatePayout)
+			r.Get("/payouts", app.ListPayouts)
+			r.Get("/revenue", app.GetRevenue)
 		})
 	})
 
