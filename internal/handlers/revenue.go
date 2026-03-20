@@ -36,27 +36,52 @@ func (a *App) GetRevenue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total, err := a.Queries.GetRevenue(r.Context(), db.GetRevenueParams{
-		CreatorID: creatorID,
-		Column2:   from,
-		Column3:   to,
-	})
-	if err != nil {
-		a.Logger.Error("get revenue", "error", err)
+	type totalResult struct {
+		val pgtype.Numeric
+		err error
+	}
+	type rowsResult struct {
+		val []db.GetRevenueByTierRow
+		err error
+	}
+
+	totalCh := make(chan totalResult, 1)
+	rowsCh := make(chan rowsResult, 1)
+
+	go func() {
+		val, err := a.Queries.GetRevenue(r.Context(), db.GetRevenueParams{
+			CreatorID: creatorID,
+			Column2:   from,
+			Column3:   to,
+		})
+		totalCh <- totalResult{val, err}
+	}()
+
+	go func() {
+		val, err := a.Queries.GetRevenueByTier(r.Context(), db.GetRevenueByTierParams{
+			CreatorID: creatorID,
+			Column2:   from,
+			Column3:   to,
+		})
+		rowsCh <- rowsResult{val, err}
+	}()
+
+	tr := <-totalCh
+	rr := <-rowsCh
+
+	if tr.err != nil {
+		a.Logger.Error("get revenue", "error", tr.err)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if rr.err != nil {
+		a.Logger.Error("get revenue by tier", "error", rr.err)
 		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	rows, err := a.Queries.GetRevenueByTier(r.Context(), db.GetRevenueByTierParams{
-		CreatorID: creatorID,
-		Column2:   from,
-		Column3:   to,
-	})
-	if err != nil {
-		a.Logger.Error("get revenue by tier", "error", err)
-		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
+	total := tr.val
+	rows := rr.val
 
 	byTier := make([]revenueByTierItem, len(rows))
 	for i, row := range rows {

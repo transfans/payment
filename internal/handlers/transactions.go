@@ -34,23 +34,48 @@ func (a *App) ListTransactions(w http.ResponseWriter, r *http.Request) {
 
 	limit, offset := httputil.ParsePage(r, 20)
 
-	total, err := a.Queries.CountTransactionsByFan(r.Context(), fanID)
-	if err != nil {
-		a.Logger.Error("count transactions", "error", err)
+	type countResult struct {
+		val int64
+		err error
+	}
+	type rowsResult struct {
+		val []db.Transaction
+		err error
+	}
+
+	countCh := make(chan countResult, 1)
+	rowsCh := make(chan rowsResult, 1)
+
+	go func() {
+		val, err := a.Queries.CountTransactionsByFan(r.Context(), fanID)
+		countCh <- countResult{val, err}
+	}()
+
+	go func() {
+		val, err := a.Queries.ListTransactionsByFan(r.Context(), db.ListTransactionsByFanParams{
+			FanID:  fanID,
+			Limit:  limit,
+			Offset: offset,
+		})
+		rowsCh <- rowsResult{val, err}
+	}()
+
+	cr := <-countCh
+	rr := <-rowsCh
+
+	if cr.err != nil {
+		a.Logger.Error("count transactions", "error", cr.err)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if rr.err != nil {
+		a.Logger.Error("list transactions", "error", rr.err)
 		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	rows, err := a.Queries.ListTransactionsByFan(r.Context(), db.ListTransactionsByFanParams{
-		FanID:  fanID,
-		Limit:  limit,
-		Offset: offset,
-	})
-	if err != nil {
-		a.Logger.Error("list transactions", "error", err)
-		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
+	total := cr.val
+	rows := rr.val
 
 	items := make([]transactionItem, len(rows))
 	for i, row := range rows {

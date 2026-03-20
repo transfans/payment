@@ -103,23 +103,48 @@ func (a *App) ListPayouts(w http.ResponseWriter, r *http.Request) {
 
 	limit, offset := httputil.ParsePage(r, 20)
 
-	total, err := a.Queries.CountPayoutsByCreator(r.Context(), creatorID)
-	if err != nil {
-		a.Logger.Error("count payouts", "error", err)
+	type countResult struct {
+		val int64
+		err error
+	}
+	type rowsResult struct {
+		val []db.Payout
+		err error
+	}
+
+	countCh := make(chan countResult, 1)
+	rowsCh := make(chan rowsResult, 1)
+
+	go func() {
+		val, err := a.Queries.CountPayoutsByCreator(r.Context(), creatorID)
+		countCh <- countResult{val, err}
+	}()
+
+	go func() {
+		val, err := a.Queries.ListPayoutsByCreator(r.Context(), db.ListPayoutsByCreatorParams{
+			CreatorID: creatorID,
+			Limit:     limit,
+			Offset:    offset,
+		})
+		rowsCh <- rowsResult{val, err}
+	}()
+
+	cr := <-countCh
+	rr := <-rowsCh
+
+	if cr.err != nil {
+		a.Logger.Error("count payouts", "error", cr.err)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	if rr.err != nil {
+		a.Logger.Error("list payouts", "error", rr.err)
 		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
 
-	rows, err := a.Queries.ListPayoutsByCreator(r.Context(), db.ListPayoutsByCreatorParams{
-		CreatorID: creatorID,
-		Limit:     limit,
-		Offset:    offset,
-	})
-	if err != nil {
-		a.Logger.Error("list payouts", "error", err)
-		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
-		return
-	}
+	total := cr.val
+	rows := rr.val
 
 	items := make([]payoutItem, len(rows))
 	for i, row := range rows {
