@@ -1,0 +1,316 @@
+openapi: 3.0.3
+info:
+  title: TransFans Payment Service
+  version: 1.0.0
+  description: Handles checkout, transactions, balances, payouts, and revenue.
+
+servers:
+  - url: http://localhost:8004
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: integer
+            message:
+              type: string
+            request_id:
+              type: string
+
+    CheckoutResponse:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        subscription_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        status:
+          type: string
+          example: success
+        expires_at:
+          type: string
+          format: date-time
+
+    TransactionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        creator_id:
+          type: string
+          format: uuid
+        tier_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TransactionsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionItem'
+        total:
+          type: integer
+
+    BalanceResponse:
+      type: object
+      properties:
+        available:
+          type: number
+          example: 120.50
+        total_earned:
+          type: number
+          example: 200.00
+        total_paid:
+          type: number
+          example: 79.50
+
+    PayoutResponse:
+      type: object
+      properties:
+        payout_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        status:
+          type: string
+          example: completed
+        completed_at:
+          type: string
+          format: date-time
+
+    PayoutItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        status:
+          type: string
+        completed_at:
+          type: string
+          format: date-time
+
+    PayoutsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayoutItem'
+        total:
+          type: integer
+
+    RevenueByTier:
+      type: object
+      properties:
+        tier_id:
+          type: string
+          format: uuid
+        count:
+          type: integer
+        amount:
+          type: number
+
+    RevenueResponse:
+      type: object
+      properties:
+        total:
+          type: number
+          example: 200.00
+        by_tier:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevenueByTier'
+
+security:
+  - bearerAuth: []
+
+paths:
+  /checkout:
+    post:
+      summary: Subscribe to a tier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tier_id]
+              properties:
+                tier_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Checkout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+        '404':
+          description: Tier not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Already subscribed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /transactions:
+    get:
+      summary: Fan's transaction history
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionsResponse'
+
+  /balance:
+    get:
+      summary: Creator's balance
+      responses:
+        '200':
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '403':
+          description: Creator account required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /payouts:
+    post:
+      summary: Request a payout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: number
+                  example: 50.00
+      responses:
+        '201':
+          description: Payout created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutResponse'
+        '400':
+          description: Amount exceeds available balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Creator account required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: Creator's payout history
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of payouts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutsResponse'
+        '403':
+          description: Creator account required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /revenue:
+    get:
+      summary: Creator's revenue breakdown by tier
+      parameters:
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Revenue summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevenueResponse'
+        '403':
+          description: Creator account required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

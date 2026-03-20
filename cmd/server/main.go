@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/transfans/payment/apidocs"
 	"github.com/transfans/payment/internal/config"
 	"github.com/transfans/payment/internal/db"
 	"github.com/transfans/payment/internal/handlers"
@@ -68,6 +68,15 @@ func main() {
 			r.Get("/payouts", app.ListPayouts)
 			r.Get("/revenue", app.GetRevenue)
 		})
+	})
+
+	r.Get("/docs", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write(apidocs.SwaggerHTML)
+	})
+	r.Get("/docs/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/yaml")
+		w.Write(apidocs.OpenAPISpec)
 	})
 
 	server := &http.Server{

@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -54,7 +55,7 @@ func (a *App) CreatePayout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var amount pgtype.Numeric
-	if err := amount.Scan(req.Amount); err != nil {
+	if err := amount.Scan(strconv.FormatFloat(req.Amount, 'f', 2, 64)); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "invalid amount")
 		return
 	}
