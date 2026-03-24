@@ -8,6 +8,7 @@ services:
       SHARED_JWT_SECRET: ${SHARED_JWT_SECRET}
       INTERNAL_SECRET: ${INTERNAL_SECRET}
       PROFILE_SERVICE_URL: ${PROFILE_SERVICE_URL:-http://profile:8002}
+      RABBITMQ_URL: ${RABBITMQ_URL}
       PORT: 8004
     depends_on:
       db:

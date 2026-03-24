@@ -16,6 +16,8 @@ import (
 	"github.com/transfans/payment/internal/db"
 	"github.com/transfans/payment/internal/handlers"
 	"github.com/transfans/payment/internal/middleware"
+	"github.com/transfans/payment/internal/mq"
+	"github.com/transfans/payment/internal/profile"
 )
 
 func main() {
@@ -46,9 +48,14 @@ func main() {
 	}
 	defer pool.Close()
 
+	publisher := mq.NewPublisher(cfg.RabbitMQURL, logger)
+	defer publisher.Close()
+
 	app := &handlers.App{
-		Queries: db.New(pool),
-		Logger:  logger,
+		Queries:       db.New(pool),
+		Logger:        logger,
+		Publisher:     publisher,
+		ProfileClient: profile.NewClient(cfg.ProfileServiceURL, cfg.InternalSecret),
 	}
 
 	r := chi.NewRouter()
@@ -57,8 +64,9 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(cfg.SharedJWTSecret))
 
-		r.Post("/checkout", func(w http.ResponseWriter, r *http.Request) {})
+		r.Post("/checkout", app.Checkout)
 		r.Get("/transactions", app.ListTransactions)
+		r.Delete("/subscriptions/{id}", app.CancelSubscription)
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.CreatorOnly)
