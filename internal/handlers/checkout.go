@@ -92,7 +92,17 @@ func (a *App) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := a.Queries.InsertTransaction(r.Context(), db.InsertTransactionParams{
+	dbTx, err := a.Pool.Begin(r.Context())
+	if err != nil {
+		a.Logger.Error("begin transaction", "error", err)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+	defer dbTx.Rollback(r.Context()) //nolint:errcheck
+
+	q := a.Queries.WithTx(dbTx)
+
+	tx, err := q.InsertTransaction(r.Context(), db.InsertTransactionParams{
 		FanID:     fanID,
 		CreatorID: creatorID,
 		TierID:    tierID,
@@ -101,6 +111,21 @@ func (a *App) Checkout(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		a.Logger.Error("insert transaction", "error", err)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	if _, err := q.UpsertBalance(r.Context(), db.UpsertBalanceParams{
+		CreatorID: creatorID,
+		Available: amount,
+	}); err != nil {
+		a.Logger.Error("upsert balance", "error", err)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
+
+	if err := dbTx.Commit(r.Context()); err != nil {
+		a.Logger.Error("commit transaction", "error", err)
 		httputil.WriteError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}

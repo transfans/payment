@@ -4,10 +4,10 @@ services:
     ports:
       - "8004:8004"
     environment:
-      DATABASE_URL: postgres://payment:payment@db:5432/payment?sslmode=disable
+      DATABASE_URL: ${DATABASE_URL} 
       SHARED_JWT_SECRET: ${SHARED_JWT_SECRET}
       INTERNAL_SECRET: ${INTERNAL_SECRET}
-      PROFILE_SERVICE_URL: ${PROFILE_SERVICE_URL:-http://profile:8002}
+      PROFILE_SERVICE_URL: ${PROFILE_SERVICE_URL}
       RABBITMQ_URL: ${RABBITMQ_URL}
       PORT: 8004
     depends_on:

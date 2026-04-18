@@ -52,6 +52,7 @@ func main() {
 	defer publisher.Close()
 
 	app := &handlers.App{
+		Pool:          pool,
 		Queries:       db.New(pool),
 		Logger:        logger,
 		Publisher:     publisher,

@@ -10,8 +10,9 @@ import (
 )
 
 type Claims struct {
-	UserID    string `json:"sub"`
-	IsCreator bool   `json:"is_creator"`
+	UserID string `json:"sub"`
+	Role   string `json:"role"`
+	Email  string `json:"email"`
 }
 
 type claimsKey struct{}
@@ -45,9 +46,12 @@ func Auth(secret string) func(http.Handler) http.Handler {
 			}
 
 			sub, _ := mapClaims["sub"].(string)
+			role, _ := mapClaims["role"].(string)
+			email, _ := mapClaims["email"].(string)
 			claims := Claims{
-				UserID:    sub,
-				IsCreator: mapClaims["is_creator"] == true,
+				UserID: sub,
+				Role:   role,
+				Email:  email,
 			}
 
 			ctx := context.WithValue(r.Context(), claimsKey{}, claims)
