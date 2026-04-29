@@ -53,7 +53,7 @@ func main() {
 
 	app := &handlers.App{
 		Pool:          pool,
-		Queries:       db.New(pool),
+		Queries:       db.NewQuerier(pool),
 		Logger:        logger,
 		Publisher:     publisher,
 		ProfileClient: profile.NewClient(cfg.ProfileServiceURL, cfg.InternalSecret),
