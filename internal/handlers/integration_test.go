@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/transfans/payment/internal/db"
 	"github.com/transfans/payment/internal/handlers"
 	"github.com/transfans/payment/internal/middleware"

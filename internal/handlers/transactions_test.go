@@ -15,7 +15,7 @@ import (
 func TestListTransactions_Empty(t *testing.T) {
 	q := &mockQuerier{
 		countTransactions: func(_ context.Context, _ pgtype.UUID) (int64, error) { return 0, nil },
-		listTransactions:  func(_ context.Context, _ db.ListTransactionsByFanParams) ([]db.Transaction, error) {
+		listTransactions: func(_ context.Context, _ db.ListTransactionsByFanParams) ([]db.Transaction, error) {
 			return nil, nil
 		},
 	}

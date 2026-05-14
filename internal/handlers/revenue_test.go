@@ -13,8 +13,10 @@ import (
 
 func TestGetRevenue_InvalidDateFormat(t *testing.T) {
 	q := &mockQuerier{
-		getRevenue:       func(_ context.Context, _ db.GetRevenueParams) (pgtype.Numeric, error) { return pgtype.Numeric{}, nil },
-		getRevenueByTier: func(_ context.Context, _ db.GetRevenueByTierParams) ([]db.GetRevenueByTierRow, error) { return nil, nil },
+		getRevenue: func(_ context.Context, _ db.GetRevenueParams) (pgtype.Numeric, error) { return pgtype.Numeric{}, nil },
+		getRevenueByTier: func(_ context.Context, _ db.GetRevenueByTierParams) ([]db.GetRevenueByTierRow, error) {
+			return nil, nil
+		},
 	}
 	app := newApp(q, nil, nil, nil)
 	h := applyAuth(app, app.GetRevenue)

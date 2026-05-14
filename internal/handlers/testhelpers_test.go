@@ -131,14 +131,14 @@ func (m *mockPublisher) Publish(ctx context.Context, key, reqID string, data any
 
 type fakeTx struct{}
 
-func (fakeTx) Begin(ctx context.Context) (pgx.Tx, error)    { return fakeTx{}, nil }
-func (fakeTx) Commit(ctx context.Context) error              { return nil }
-func (fakeTx) Rollback(ctx context.Context) error            { return nil }
+func (fakeTx) Begin(ctx context.Context) (pgx.Tx, error) { return fakeTx{}, nil }
+func (fakeTx) Commit(ctx context.Context) error          { return nil }
+func (fakeTx) Rollback(ctx context.Context) error        { return nil }
 func (fakeTx) CopyFrom(_ context.Context, _ pgx.Identifier, _ []string, _ pgx.CopyFromSource) (int64, error) {
 	return 0, nil
 }
 func (fakeTx) SendBatch(_ context.Context, _ *pgx.Batch) pgx.BatchResults { return nil }
-func (fakeTx) LargeObjects() pgx.LargeObjects                              { return pgx.LargeObjects{} }
+func (fakeTx) LargeObjects() pgx.LargeObjects                             { return pgx.LargeObjects{} }
 func (fakeTx) Prepare(_ context.Context, _, _ string) (*pgconn.StatementDescription, error) {
 	return nil, nil
 }

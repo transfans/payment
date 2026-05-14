@@ -61,7 +61,7 @@ func TestCreatePayout_Success(t *testing.T) {
 		t.Fatalf("want 201 got %d: %s", rec.Code, rec.Body.String())
 	}
 	var resp struct {
-		Status string `json:"status"`
+		Status string  `json:"status"`
 		Amount float64 `json:"amount"`
 	}
 	json.NewDecoder(rec.Body).Decode(&resp)
