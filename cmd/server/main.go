@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/transfans/payment/apidocs"
 	"github.com/transfans/payment/internal/config"
 	"github.com/transfans/payment/internal/db"
@@ -61,6 +62,9 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
+	r.Use(middleware.Metrics)
+
+	r.Handle("/metrics", promhttp.Handler())
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(cfg.SharedJWTSecret))
